@@ -1,0 +1,19 @@
+# OS / editor
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# Node-RED local runtime
+node-red/.node-red/
+node_modules/
+
+# Arduino local/build artifacts
+arduino/build/
+*.hex
+*.elf
+
+# Environment / secrets
+.env
+.env.*
+!.env.example

@@ -1,0 +1,280 @@
+[
+  {
+    "id": "6d0f9ac8f9d3f3e1",
+    "type": "tab",
+    "label": "Automacao Luz e Temperatura",
+    "disabled": false,
+    "info": "Reconstrucao funcional baseada no artigo academico."
+  },
+  {
+    "id": "d1b5837e7d42ccf1",
+    "type": "comment",
+    "z": "6d0f9ac8f9d3f3e1",
+    "name": "Arduino -> Serial JSON -> MQTT",
+    "info": "Recebe telemetria JSON do Arduino e publica em topicos MQTT.",
+    "x": 230,
+    "y": 80,
+    "wires": []
+  },
+  {
+    "id": "148de2cf7cf2ff37",
+    "type": "serial in",
+    "z": "6d0f9ac8f9d3f3e1",
+    "name": "Arduino telemetry",
+    "serial": "e60433e8d643bf93",
+    "x": 170,
+    "y": 160,
+    "wires": [
+      [
+        "fa343f92e628ade1"
+      ]
+    ]
+  },
+  {
+    "id": "fa343f92e628ade1",
+    "type": "json",
+    "z": "6d0f9ac8f9d3f3e1",
+    "name": "Parse JSON",
+    "property": "payload",
+    "action": "",
+    "pretty": false,
+    "x": 380,
+    "y": 160,
+    "wires": [
+      [
+        "55a729703680c830",
+        "55361c2370f46320"
+      ]
+    ]
+  },
+  {
+    "id": "55a729703680c830",
+    "type": "function",
+    "z": "6d0f9ac8f9d3f3e1",
+    "name": "Route telemetry",
+    "func": "const p = msg.payload;\n\nif (!p || typeof p !== \"object\") {\n    return null;\n}\n\nconst messages = [];\n\nfunction add(topic, payload, retain = false) {\n    messages.push({\n        topic,\n        payload,\n        qos: \"0\",\n        retain: retain ? \"true\" : \"false\"\n    });\n}\n\nif (p.type === \"telemetry\") {\n    add(\"casa/ambiente/telemetria\", JSON.stringify(p));\n    if (p.temperature_c !== null && p.temperature_c !== undefined) {\n        add(\"casa/ambiente/temperatura\", String(p.temperature_c));\n    }\n    if (p.humidity_pct !== null && p.humidity_pct !== undefined) {\n        add(\"casa/ambiente/umidade\", String(p.humidity_pct));\n    }\n    add(\"casa/ambiente/luminosidade\", String(p.light_raw));\n    add(\"casa/estado/ventilador\", p.fan_on ? \"ON\" : \"OFF\", true);\n    add(\"casa/estado/luz\", p.light_on ? \"ON\" : \"OFF\", true);\n    add(\"casa/estado/movimento\", p.motion ? \"1\" : \"0\");\n    return [messages];\n}\n\nadd(\"casa/sistema/eventos\", JSON.stringify(p));\nreturn [messages];",
+    "outputs": 1,
+    "timeout": 0,
+    "noerr": 0,
+    "initialize": "",
+    "finalize": "",
+    "libs": [],
+    "x": 590,
+    "y": 160,
+    "wires": [
+      [
+        "133a93f44dc1fd5d"
+      ]
+    ]
+  },
+  {
+    "id": "133a93f44dc1fd5d",
+    "type": "mqtt out",
+    "z": "6d0f9ac8f9d3f3e1",
+    "name": "Publish telemetry",
+    "topic": "",
+    "qos": "",
+    "retain": "",
+    "respTopic": "",
+    "contentType": "",
+    "userProps": "",
+    "correl": "",
+    "expiry": "",
+    "broker": "c9c7de6c4d54b625",
+    "x": 820,
+    "y": 160,
+    "wires": []
+  },
+  {
+    "id": "55361c2370f46320",
+    "type": "debug",
+    "z": "6d0f9ac8f9d3f3e1",
+    "name": "Serial parsed",
+    "active": false,
+    "tosidebar": true,
+    "console": false,
+    "tostatus": false,
+    "complete": "payload",
+    "targetType": "msg",
+    "statusVal": "",
+    "statusType": "auto",
+    "x": 590,
+    "y": 220,
+    "wires": []
+  },
+  {
+    "id": "0f5ef1c78c90374c",
+    "type": "comment",
+    "z": "6d0f9ac8f9d3f3e1",
+    "name": "MQTT -> comandos Serial -> Arduino",
+    "info": "Recebe configuracoes e comandos do smartphone/cliente MQTT.",
+    "x": 250,
+    "y": 320,
+    "wires": []
+  },
+  {
+    "id": "726069c210e66e68",
+    "type": "mqtt in",
+    "z": "6d0f9ac8f9d3f3e1",
+    "name": "MQTT config",
+    "topic": "casa/config/#",
+    "qos": "0",
+    "datatype": "auto-detect",
+    "broker": "c9c7de6c4d54b625",
+    "nl": false,
+    "rap": true,
+    "rh": 0,
+    "inputs": 0,
+    "x": 160,
+    "y": 400,
+    "wires": [
+      [
+        "28ff7c6fe426ad9d"
+      ]
+    ]
+  },
+  {
+    "id": "5470bb2d34f8a918",
+    "type": "mqtt in",
+    "z": "6d0f9ac8f9d3f3e1",
+    "name": "MQTT commands",
+    "topic": "casa/comando/#",
+    "qos": "0",
+    "datatype": "auto-detect",
+    "broker": "c9c7de6c4d54b625",
+    "nl": false,
+    "rap": true,
+    "rh": 0,
+    "inputs": 0,
+    "x": 170,
+    "y": 460,
+    "wires": [
+      [
+        "28ff7c6fe426ad9d"
+      ]
+    ]
+  },
+  {
+    "id": "28ff7c6fe426ad9d",
+    "type": "function",
+    "z": "6d0f9ac8f9d3f3e1",
+    "name": "Map MQTT to Arduino command",
+    "func": "const topic = String(msg.topic || \"\");\nlet value = msg.payload;\n\nif (Buffer.isBuffer(value)) {\n    value = value.toString(\"utf8\");\n}\n\nvalue = String(value).trim();\n\nfunction boolTo01(v) {\n    const s = String(v).trim().toLowerCase();\n\n    if ([\"1\", \"true\", \"on\", \"ligar\"].includes(s)) return \"1\";\n    if ([\"0\", \"false\", \"off\", \"desligar\"].includes(s)) return \"0\";\n\n    return null;\n}\n\nconst mapping = {\n    \"casa/config/temperatura_limite\": \"TEMP_LIMIT\",\n    \"casa/config/histerese\": \"HYSTERESIS\",\n    \"casa/config/luminosidade_limite\": \"LIGHT_THRESHOLD\",\n    \"casa/config/auto_temperatura\": \"AUTO_TEMP\",\n    \"casa/config/auto_iluminacao\": \"AUTO_LIGHT\",\n    \"casa/config/exigir_movimento\": \"MOTION_REQUIRED\",\n    \"casa/comando/ventilador\": \"FAN\",\n    \"casa/comando/luz\": \"LIGHT\"\n};\n\nif (topic === \"casa/comando/status\") {\n    msg.payload = \"STATUS\\n\";\n    return msg;\n}\n\nconst command = mapping[topic];\n\nif (!command) {\n    node.warn(`Topico sem mapeamento: ${topic}`);\n    return null;\n}\n\nif ([\"AUTO_TEMP\", \"AUTO_LIGHT\", \"MOTION_REQUIRED\", \"FAN\", \"LIGHT\"].includes(command)) {\n    const normalized = boolTo01(value);\n\n    if (normalized === null) {\n        node.warn(`Payload booleano invalido em ${topic}: ${value}`);\n        return null;\n    }\n\n    value = normalized;\n}\n\nmsg.payload = `${command}=${value}\\n`;\nreturn msg;",
+    "outputs": 1,
+    "timeout": 0,
+    "noerr": 0,
+    "initialize": "",
+    "finalize": "",
+    "libs": [],
+    "x": 470,
+    "y": 430,
+    "wires": [
+      [
+        "ad2469d1f245b209",
+        "1d82239c1533695f"
+      ]
+    ]
+  },
+  {
+    "id": "ad2469d1f245b209",
+    "type": "serial out",
+    "z": "6d0f9ac8f9d3f3e1",
+    "name": "Send to Arduino",
+    "serial": "e60433e8d643bf93",
+    "x": 740,
+    "y": 410,
+    "wires": []
+  },
+  {
+    "id": "1d82239c1533695f",
+    "type": "debug",
+    "z": "6d0f9ac8f9d3f3e1",
+    "name": "Command sent",
+    "active": false,
+    "tosidebar": true,
+    "console": false,
+    "tostatus": false,
+    "complete": "payload",
+    "targetType": "msg",
+    "statusVal": "",
+    "statusType": "auto",
+    "x": 740,
+    "y": 470,
+    "wires": []
+  },
+  {
+    "id": "7831dfca79a7cf3e",
+    "type": "inject",
+    "z": "6d0f9ac8f9d3f3e1",
+    "name": "Request status",
+    "props": [
+      {
+        "p": "payload"
+      },
+      {
+        "p": "topic",
+        "vt": "str"
+      }
+    ],
+    "repeat": "",
+    "crontab": "",
+    "once": false,
+    "onceDelay": 0.1,
+    "topic": "casa/comando/status",
+    "payload": "1",
+    "payloadType": "str",
+    "x": 160,
+    "y": 530,
+    "wires": [
+      [
+        "28ff7c6fe426ad9d"
+      ]
+    ]
+  },
+  {
+    "id": "c9c7de6c4d54b625",
+    "type": "mqtt-broker",
+    "name": "Mosquitto local",
+    "broker": "127.0.0.1",
+    "port": "1883",
+    "clientid": "node-red-luz-temperatura",
+    "autoConnect": true,
+    "usetls": false,
+    "protocolVersion": "4",
+    "keepalive": "60",
+    "cleansession": true,
+    "autoUnsubscribe": true,
+    "birthTopic": "",
+    "birthQos": "0",
+    "birthPayload": "",
+    "birthMsg": {},
+    "closeTopic": "",
+    "closeQos": "0",
+    "closePayload": "",
+    "closeMsg": {},
+    "willTopic": "",
+    "willQos": "0",
+    "willPayload": "",
+    "willMsg": {}
+  },
+  {
+    "id": "e60433e8d643bf93",
+    "type": "serial-port",
+    "name": "Arduino UNO",
+    "serialport": "COM6",
+    "serialbaud": "9600",
+    "databits": "8",
+    "parity": "none",
+    "stopbits": "1",
+    "waitfor": "",
+    "dtr": "none",
+    "rts": "none",
+    "cts": "none",
+    "dsr": "none",
+    "newline": "\\n",
+    "bin": "false",
+    "out": "char",
+    "addchar": "",
+    "responsetimeout": "10000"
+  }
+]
